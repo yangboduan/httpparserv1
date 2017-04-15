@@ -23,7 +23,8 @@ TCP头部长度:
 */
 void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * packet)  
 { 
-    struct in_addr addr;//用来表示一个32位的IPv4地址的结构体
+    struct in_addr ipsrcaddr;//用来表示一个32位的IPv4地址的结构体,源
+    struct in_addr ipdstaddr;//用来表示一个32位的IPv4地址的结构体，目的
     struct ether_header *ethernet_hdrptr; //以太网头部 
     unsigned short ethernet_type;           //二层头部的以太网类型 
     struct iphdr *iphdrptr;  //IP头部结构体 
@@ -31,9 +32,10 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
     struct ether_arp *arp__packet;
     char buffer[ETH_FRAME_LEN];//以太网正的最大长度
     char *data; 
-    int * id = (int *)arg;  
+    int * id = (int *)arg; 
+    int ipheardlen,tcpheardlen;
+    int maciptcpheardlen;//2-4层报文头部总长度 
     unsigned char *mac_string;
-                
     cout <<formatdatetime()<<"  "; 
     ethernet_hdrptr = (struct ether_header *)packet;
    
@@ -48,14 +50,18 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
     if (ethernet_type == ETHERTYPE_IP){ //IP protocol
 	 
         //分析三层头部信息
-	iphdrptr = (struct iphdr*)    (packet+sizeof(struct ether_header));//得到ip包头 
-	addr.s_addr = iphdrptr->saddr;//目的IP地址
-	cout<<"\t"<< inet_ntoa(addr) <<"------>"; 
-	addr.s_addr = iphdrptr->daddr;//目的IP地址
-	cout<< inet_ntoa(addr)<<"  ";
-	cout<<"ihl:"<<(iphdrptr->ihl)*4<<endl;
+	iphdrptr = (struct iphdr*)    (packet+sizeof(struct ether_header));//得到ip包头
+	ipsrcaddr.s_addr = iphdrptr->saddr;//源IP地址
+	ipdstaddr.s_addr = iphdrptr->daddr;//目的IP地址
+	ipheardlen = (iphdrptr->ihl)*4;//IP头部长度
+
 	tcphdrptr = (struct tcphdr*)(packet+sizeof(struct ether_header)+sizeof(struct iphdr));//得到tcp包头
-	cout <<"("<<ntohs(tcphdrptr->source)<<" -------->"<<ntohs(tcphdrptr->dest)<<")";
+	tcpheardlen = tcphdrptr->doff*4;//TCP头部长度
+
+	maciptcpheardlen = (iphdrptr->ihl)*4 + tcphdrptr->doff*4 + 14;//2-4层头部的总长度
+
+	cout <<inet_ntoa(ipsrcaddr)<<":"<<ntohs(tcphdrptr->source)<<" ---->"<<inet_ntoa(ipdstaddr)<<":"<<ntohs(tcphdrptr->dest)<<" [SYN:"<<tcphdrptr->syn<<"; ACK:"<<tcphdrptr->ack<<"]"<<endl;
+	//cout <<"("<<ntohs(tcphdrptr->source)<<" -------->"<<ntohs(tcphdrptr->dest)<<")";
 /*TCP 报文头部字段值
 	        <<"  seq:"<<tcphdrptr->seq
 		<<"  ack_seq:"<<tcphdrptr->ack_seq
@@ -65,16 +71,13 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
 		cout<<" ]";
 */
     }
-   data = (char*)(packet+sizeof(struct ether_header)+sizeof(struct iphdr)
-                                    +sizeof(struct tcphdr));
- 
+   data = (char*)(packet+maciptcpheardlen);//得到TCP报文内容
     //usleep(800*1000);
 //去掉该注释，显示报文详细内容 
     int i;  
     //for(i=0; i<pkthdr->len; ++i) 
-    cout<<pkthdr->caplen<<endl; 
     //for(i=12; i<pkthdr->len; ++i)  
-    for(i=0; i<pkthdr->caplen; ++i)  
+    for(i=0; i<(pkthdr->caplen-maciptcpheardlen); ++i)  
     { 
 	unsigned char ch = data[i];
 	//if(ch>=' ' && ch<='~') fputc(ch,stdout);
