@@ -14,13 +14,7 @@
 #include <iostream>
 #include "formatdatetime.h"
 using namespace std;
-/*
-以太网帧头部长度:(6+6+2)
-IP头部长度:可变
-TCP头部长度:
 
-
-*/
 void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * packet)  
 { 
     struct in_addr ipsrcaddr;//用来表示一个32位的IPv4地址的结构体,源
@@ -49,19 +43,19 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
     //分析数据包二层头部，解析出上层协议
     if (ethernet_type == ETHERTYPE_IP){ //IP protocol
 	 
-        //分析三层头部信息
+        //三层头部信息
 	iphdrptr = (struct iphdr*)    (packet+sizeof(struct ether_header));//得到ip包头
 	ipsrcaddr.s_addr = iphdrptr->saddr;//源IP地址
 	ipdstaddr.s_addr = iphdrptr->daddr;//目的IP地址
 	ipheardlen = (iphdrptr->ihl)*4;//IP头部长度
 
+        //四层头部信息
 	tcphdrptr = (struct tcphdr*)(packet+sizeof(struct ether_header)+sizeof(struct iphdr));//得到tcp包头
 	tcpheardlen = tcphdrptr->doff*4;//TCP头部长度
 
 	maciptcpheardlen = (iphdrptr->ihl)*4 + tcphdrptr->doff*4 + 14;//2-4层头部的总长度
 
-	cout <<inet_ntoa(ipsrcaddr)<<":"<<ntohs(tcphdrptr->source)<<" ---->"<<inet_ntoa(ipdstaddr)<<":"<<ntohs(tcphdrptr->dest)<<" [SYN:"<<tcphdrptr->syn<<"; ACK:"<<tcphdrptr->ack<<"]"<<endl;
-	//cout <<"("<<ntohs(tcphdrptr->source)<<" -------->"<<ntohs(tcphdrptr->dest)<<")";
+	cout <<inet_ntoa(ipsrcaddr)<<":"<<ntohs(tcphdrptr->source)<<" ----> "<<inet_ntoa(ipdstaddr)<<":"<<ntohs(tcphdrptr->dest)<<" [SYN:"<<tcphdrptr->syn<<"; ACK:"<<tcphdrptr->ack<<"]"<<endl;
 /*TCP 报文头部字段值
 	        <<"  seq:"<<tcphdrptr->seq
 		<<"  ack_seq:"<<tcphdrptr->ack_seq
@@ -76,7 +70,8 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
 //去掉该注释，显示报文详细内容 
     int i;  
     //for(i=0; i<pkthdr->len; ++i) 
-    //for(i=12; i<pkthdr->len; ++i)  
+    //for(i=12; i<pkthdr->len; ++i) 
+    cout<<"TCPContentLen:"<<(pkthdr->caplen-maciptcpheardlen)<<endl; 
     for(i=0; i<(pkthdr->caplen-maciptcpheardlen); ++i)  
     { 
 	unsigned char ch = data[i];
