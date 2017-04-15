@@ -1,8 +1,8 @@
 CPP      = g++
 CC       = gcc
 CFLAGS   = -g -Wall
-OBJ      = main.o formatdatetime.o
-LINKOBJ  = main.o formatdatetime.o
+OBJ      = main.o formatdatetime.o getpacket.o
+LINKOBJ  = main.o formatdatetime.o getpacket.o 
 BIN      = parserhttp
 RM       = rm -rf
 LIB	 = -lpcap
