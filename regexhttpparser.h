@@ -1,2 +1,2 @@
 bool onMessageBegin (const char *data);
-bool onMessagehost (const char *data);
+string onMessageHost(const string& str);

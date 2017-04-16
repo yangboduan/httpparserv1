@@ -29,7 +29,6 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
     int ipheardlen,tcpheardlen;
     int maciptcpheardlen;//2-4层报文头部总长度 
     unsigned char *mac_string;
-    cout <<formatdatetime()<<"  "; 
     ethernet_hdrptr = (struct ether_header *)packet;
    
     //printf("id: %d\n", ++(*id));  //抓包计数
@@ -39,21 +38,17 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
     //分析二层头部信息 
     ethernet_type = ntohs(ethernet_hdrptr->ether_type);//获得以太网的类型
   
+    char ipsrcaddrstr[16]; //存储源IP地址
+    char ipdstaddrstr[16]; //存储目的IP地址 
     //分析数据包二层头部，解析出上层协议
     if (ethernet_type == ETHERTYPE_IP){ //IP protocol
-        const char *ipsrcaddrstr = NULL; 
-        const char *ipdstaddrstr = NULL; 
-
         //三层头部信息
         iphdrptr = (struct iphdr*)    (packet+sizeof(struct ether_header));//得到ip包头
 	addr.s_addr = iphdrptr->saddr;//源IP地址
-	cout <<iphdrptr->saddr<<" ddddddd";
-	cout<<iphdrptr->daddr<<" dddd";
-        ipsrcaddrstr = inet_ntoa(addr);
-        addr.s_addr = iphdrptr->daddr;//目的IP地址
-        ipdstaddrstr = inet_ntoa(addr);
-	cout <<"src_ip:"<<ipsrcaddrstr<<"\t"<<"dst_ip:"<<ipdstaddrstr<<endl;	
+        strcpy(ipsrcaddrstr,inet_ntoa(addr));//inet_ntoa(addr)返回的地址空间是静态的，为了防止下次调用内容被覆盖，复制内容至栈空间 
 
+        addr.s_addr = iphdrptr->daddr;//目的IP地址
+        strcpy(ipdstaddrstr,inet_ntoa(addr));//inet_ntoa(addr)返回的地址空间是静态的，为了防止下次调用内容被覆盖，复制内容至栈空间
 
         ipheardlen = (iphdrptr->ihl)*4;//IP头部长度
     
@@ -62,26 +57,28 @@ void getPacket(u_char * arg, const struct pcap_pkthdr * pkthdr, const u_char * p
         tcpheardlen = tcphdrptr->doff*4;//TCP头部长度
     
         maciptcpheardlen = (iphdrptr->ihl)*4 + tcphdrptr->doff*4 + 14;//2-4层头部的总长度
-    
-        //cout <<inet_ntoa(ipsrcaddr)<<":"<<ntohs(tcphdrptr->source)<<" ----> "<<inet_ntoa(ipdstaddr)<<":"<<ntohs(tcphdrptr->dest)<<" [SYN:"<<tcphdrptr->syn<<"; ACK:"<<tcphdrptr->ack<<"]"<<endl;
-/*TCP 报文头部字段值
-            <<"  seq:"<<tcphdrptr->seq
-	<<"  ack_seq:"<<tcphdrptr->ack_seq
-	<<"  syn:"<<tcphdrptr->syn
-	<<"  fin:"<<tcphdrptr->fin
-                <<"  ack:"<<tcphdrptr->ack
-	cout<<" ]";
-*/
+         
+        //cout <<ipsrcaddrstr<<" : "<<ntohs(tcphdrptr->source)<<" ----> "<<ipdstaddrstr<<" : "<<ntohs(tcphdrptr->dest)<<" [SYN:"<<tcphdrptr->syn<<"; ACK:"<<tcphdrptr->ack<<"]"<<endl;
+	/*TCP 报文头部字段值
+        tcphdrptr->seq
+	tcphdrptr->ack_seq
+	tcphdrptr->syn
+	tcphdrptr->fin
+        tcphdrptr->ack
+	
+	*/
     }
-   data = (char*)(packet+maciptcpheardlen);//得到TCP报文内容
-    onMessageBegin(data);
-    onMessagehost(data);
-    //usleep(800*1000);
-//去掉该注释，显示报文详细内容 
-    int i;  
+    data = (char*)(packet+maciptcpheardlen);//得到TCP报文内容
+    string s1;
+    s1 = data;
+    //int AppContentLen = pkthdr->caplen - maciptcpheardlen; //应用层内容大小
+    int AppContentLen = pkthdr->len - maciptcpheardlen; //应用层内容大小
+    cout <<formatdatetime()<<"  "; 
+    cout <<ipsrcaddrstr<<" : "<<ntohs(tcphdrptr->source)<<" ----> "<<ipdstaddrstr<<" : "<<ntohs(tcphdrptr->dest)<<" [SYN:"<<tcphdrptr->syn<<"; ACK:"<<tcphdrptr->ack<<"]"<<"caplen:"<<pkthdr->caplen<<"  maciptcpheardlen:"<<maciptcpheardlen<<"  AppContentLen:"<<AppContentLen<<endl;
+   // cout<<"["<<onMessageHost(s1)<<"]";
     cout<<data;
-    cout<<"TCPContentLen:"<<(pkthdr->caplen-maciptcpheardlen)<<endl; 
     printf("\n\n"); 
+    
 
 }  
   
